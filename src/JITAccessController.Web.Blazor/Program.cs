@@ -2,9 +2,11 @@ using System.Security.Claims;
 using JITAccessController.Web.Blazor;
 using JITAccessController.Web.Blazor.Components;
 using JITAccessController.Web.Blazor.Kubernetes;
+using JITAccessController.Web.Blazor.Options;
 using k8s;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Serilog;
@@ -21,6 +23,8 @@ Log.Logger = new LoggerConfiguration()
     .CreateLogger();
 
 builder.Logging.AddSerilog();
+
+builder.Services.AddOptions<JITAccessOptions>();
 
 builder.Services.AddSingleton<IKubernetes>(sp =>
 {
@@ -80,7 +84,12 @@ builder.Services.AddAuthentication(options =>
     options.Scope.Add("groups");
 });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.FallbackPolicy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
+});
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();

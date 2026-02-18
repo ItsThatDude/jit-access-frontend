@@ -18,86 +18,7 @@
 
 <h3>Cluster Access Requests</h3>
 @if (clusterAccessRequests != null && clusterAccessRequests.Count > 0) {
-<div class="list-group mb-2 col-md-4">
-    @foreach (var request in clusterAccessRequests) {
-        <div class="list-group-item">
-            <div class="d-flex w-100 justify-content-between">
-                <h5 class="mb-1">@request.Metadata.Name</h5>
-                <div>
-                    <small class="@StateClass(request)">@request.Status?.State</small>
-                @if(request.Status?.State == "Pending") {
-                    <small>&nbsp;|&nbsp;Expires: @request.Status.RequestExpiresAt</small>
-                }
-                </div>
-            </div>
-            <div>
-                <div>
-                    <strong class="d-block">Subject</strong>
-                    <span class="d-block">@request.Spec?.Subject</span>
-                </div>
-                @if(!string.IsNullOrWhiteSpace(request.Spec?.Role?.Name)) {
-                    <div>
-                        <strong class="d-block">Requested Role</strong>
-                        <span class="d-block">@request.Spec.Role.Name</span>
-                    </div>
-                }
-                @if(request.Spec?.Permissions.Count > 0) {
-                    <strong>Requested Permissions</strong>
-                    @foreach(var permission in request.Spec.Permissions) {
-                        @if (permission.ApiGroups != null) {
-                            <div class="my-1">
-                                <h6>API Groups:</h6>
-                                <ul class="list-group">
-                                @foreach(var apiGroup in permission.ApiGroups) {
-                                    <li class="list-group-item">@if(apiGroup == "") { <text>(core)</text> } else { @apiGroup }</li>
-                                }
-                                </ul>
-                            </div>
-                        }
-                        @if (permission.Verbs != null) {
-                            <div class="mb-1">
-                                <h6>Verbs:</h6>
-                                <ul class="list-group">
-                                @foreach(var verb in permission.Verbs) {
-                                    <li class="list-group-item">@verb</li>
-                                }
-                                </ul>
-                            </div>
-                        }
-                        @if (permission.Resources != null) {
-                            <div class="mb-1">
-                                <h6>Resources:</h6>
-                                <ul class="list-group">
-                                @foreach(var resource in permission.Resources) {
-                                    <li class="list-group-item">@resource</li>
-                                }
-                                </ul>
-                            </div>
-                        }
-                        @if (permission.ResourceNames != null) {
-                            <div class="mb-1">
-                                <h6>Resource Names:</h6>
-                                <ul class="list-group">
-                                @foreach(var resourceName in permission.ResourceNames) {
-                                    <li class="list-group-item">@resourceName</li>
-                                }
-                                </ul>
-                            </div>
-                        }
-                    }
-                }
-            </div>
-            @if(request.Status?.State == "Pending") {
-                @if(ICanApprove(request)) {
-                    <div class="d-flex w-100 justify-content-end my-1">
-                        <button class="btn btn-sm btn-outline-success m-1" @onclick="@(e => ApproveRequest(request))">Approve</button>
-                        <button class="btn btn-sm btn-outline-danger m-1" @onclick="@(e => DeclineRequest(request))">Decline</button>
-                    </div>
-                }
-            }
-        </div>
-    }
-</div>
+<AccessRequestList AccessRequests="@clusterAccessRequests" CanApproveRequest="@(request => ICanApprove(request, clusterAccessPolicies))" OnRefreshRequested="Refresh" OnError="ShowError" />
 }
 else {
     <p>No cluster access requests were found</p>
@@ -105,86 +26,7 @@ else {
 
 <h3>Access Requests</h3>
 @if (accessRequests != null && accessRequests.Count > 0) {
-<div class="list-group">
-    @foreach (var request in accessRequests) {
-        <div class="list-group-item">
-            <div class="d-flex w-100 justify-content-between">
-                <h5 class="mb-1">@request.Metadata.Name</h5>
-                <div>
-                    <small class="@StateClass(request)">@request.Status?.State</small>
-                @if(request.Status?.State == "Pending") {
-                    <small>&nbsp;|&nbsp;Expires: @request.Status.RequestExpiresAt</small>
-                }
-                </div>
-            </div>
-            <div>
-                <div>
-                    <strong class="d-block">Subject</strong>
-                    <span class="d-block">@request.Spec?.Subject</span>
-                </div>
-                @if(!string.IsNullOrWhiteSpace(request.Spec?.Role?.Name)) {
-                    <div>
-                        <strong class="d-block">Requested Role</strong>
-                        <span class="d-block">@request.Spec.Role.Name</span>
-                    </div>
-                }
-                @if(request.Spec?.Permissions.Count > 0) {
-                    <strong>Requested Permissions</strong>
-                    @foreach(var permission in request.Spec.Permissions) {
-                        @if (permission.ApiGroups != null) {
-                            <div class="my-1">
-                                <h6>API Groups:</h6>
-                                <ul class="list-group">
-                                @foreach(var apiGroup in permission.ApiGroups) {
-                                    <li class="list-group-item">@if(apiGroup == "") { <text>(core)</text> } else { @apiGroup }</li>
-                                }
-                                </ul>
-                            </div>
-                        }
-                        @if (permission.Verbs != null) {
-                            <div class="mb-1">
-                                <h6>Verbs:</h6>
-                                <ul class="list-group">
-                                @foreach(var verb in permission.Verbs) {
-                                    <li class="list-group-item">@verb</li>
-                                }
-                                </ul>
-                            </div>
-                        }
-                        @if (permission.Resources != null) {
-                            <div class="mb-1">
-                                <h6>Resources:</h6>
-                                <ul class="list-group">
-                                @foreach(var resource in permission.Resources) {
-                                    <li class="list-group-item">@resource</li>
-                                }
-                                </ul>
-                            </div>
-                        }
-                        @if (permission.ResourceNames != null) {
-                            <div class="mb-1">
-                                <h6>Resource Names:</h6>
-                                <ul class="list-group">
-                                @foreach(var resourceName in permission.ResourceNames) {
-                                    <li class="list-group-item">@resourceName</li>
-                                }
-                                </ul>
-                            </div>
-                        }
-                    }
-                }
-            </div>
-            @if(request.Status?.State == "Pending") {
-                @if(ICanApprove(request)) {
-                    <div class="d-flex w-100 justify-content-end my-1">
-                        <button class="btn btn-sm btn-outline-success m-1" @onclick="@(e => ApproveRequest(request))">Approve</button>
-                        <button class="btn btn-sm btn-outline-danger m-1" @onclick="@(e => DeclineRequest(request))">Decline</button>
-                    </div>
-                }
-            }
-        </div>
-    }
-</div>
+<AccessRequestList @AccessRequests=@accessRequests" CanApproveRequest="@(request => ICanApprove(request, accessPolicies))" OnRefreshRequested="Refresh" OnError="ShowError" />
 }
 else {
     <p>No access requests were found</p>
@@ -198,7 +40,9 @@ else {
     public string Error = "";
     private AuthenticationState? authState;
     private List<ClusterAccessRequest> clusterAccessRequests = new List<ClusterAccessRequest>();
+    private List<ClusterAccessPolicy> clusterAccessPolicies = new List<ClusterAccessPolicy>();
     private List<AccessRequest> accessRequests = new List<AccessRequest>();
+    private List<AccessPolicy> accessPolicies = new List<AccessPolicy>();
 
     protected bool IsAuthenticated() {
         return authState != null && authState.User.Identity != null;
@@ -221,102 +65,18 @@ else {
         authState = await AuthStateProvider.GetAuthenticationStateAsync();
 
         ClusterRequestStore.OnChanged += Refresh;
+        ClusterPolicyStore.OnChanged += Refresh;
+
         RequestStore.OnChanged += Refresh;
+        PolicyStore.OnChanged += Refresh;
 
         Refresh();
     }
 
-    private string StateClass(BaseAccessRequest request) {
-        switch (request.Status?.State) {
-            case "Approved":
-                return "text-success";
-            case "Denied":
-                return "text-danger";
-            case "Pending":
-                return "text-primary";
-            default:
-                return "";
-        }
-    }
-
-    private bool IsMyRequest(BaseAccessRequest request) {
-        if(authState == null || !IsAuthenticated())
-            return false;
-
-        var username = authState.User.Claims.FirstOrDefault(c => c.Type == "preferred_username");
+    private void ShowError(Exception ex) {
+        Error = ex.Message;
         
-        if(username == null) {
-            return false;
-        }
-
-        if(request.Spec?.Subject == username.Value) {
-            return true;
-        }
-
-        return false;
-    }
-
-    private bool ICanApprove(AccessRequest request) {
-        if(authState == null || !IsAuthenticated())
-            return false;
-
-        var username = authState.User.Claims.FirstOrDefault(c => c.Type == "preferred_username");
-        var groups = authState.User.Claims.Where(c => c.Type == "groups").Select(c => c.Value);
-        
-        if(username == null) {
-            return false;
-        }
-
-        if(!string.IsNullOrWhiteSpace(request.Status?.ResolvedPolicy)) {
-            var policy = PolicyStore.All.FirstOrDefault(p => p.Metadata.Name == request.Status?.ResolvedPolicy);
-
-            if(policy != null) {
-                if(policy.Spec != null) {
-                    if(policy.Spec.Approvers.Any(s => s.Kind == "User" && s.Name == username.Value)) {
-                        return true;
-                    }
-
-                    if(groups != null) {
-                        if(policy.Spec.Approvers.Any(s => s.Kind == "Group" && groups.Any(g => g == s.Name))) {
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-
-        return false;
-    }
-    private bool ICanApprove(ClusterAccessRequest request) {
-        if(authState == null || !IsAuthenticated())
-            return false;
-
-        var username = authState.User.Claims.FirstOrDefault(c => c.Type == "preferred_username");
-        var groups = authState.User.Claims.Where(c => c.Type == "groups").Select(c => c.Value);
-        
-        if(username == null) {
-            return false;
-        }
-
-        if(!string.IsNullOrWhiteSpace(request.Status?.ResolvedPolicy)) {
-            var policy = ClusterPolicyStore.All.FirstOrDefault(p => p.Metadata.Name == request.Status?.ResolvedPolicy);
-
-            if(policy != null) {
-                if(policy.Spec != null) {
-                    if(policy.Spec.Approvers.Any(s => s.Kind == "User" && s.Name == username.Value)) {
-                        return true;
-                    }
-
-                    if(groups != null) {
-                        if(policy.Spec.Approvers.Any(s => s.Kind == "Group" && groups.Any(g => g == s.Name.Split(':').Last()))) {
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-
-        return false;
+        InvokeAsync(StateHasChanged);
     }
 
     private void Refresh()
@@ -330,12 +90,14 @@ else {
             return;
         }
 
-        accessRequests = RequestStore.All
-            .Where(r => IsMyRequest(r) || ICanApprove(r))
+        clusterAccessPolicies = ClusterPolicyStore.All.ToList();
+        clusterAccessRequests = ClusterRequestStore.All
+            .Where(r => IsMyRequest(r) || ICanApprove(r, clusterAccessPolicies))
             .ToList();
 
-        clusterAccessRequests = ClusterRequestStore.All
-            .Where(r => IsMyRequest(r) || ICanApprove(r))
+        accessPolicies = PolicyStore.All.ToList();
+        accessRequests = RequestStore.All
+            .Where(r => IsMyRequest(r) || ICanApprove(r, accessPolicies))
             .ToList();
         
         InvokeAsync(StateHasChanged);
@@ -344,44 +106,39 @@ else {
     public void Dispose()
     {
         ClusterRequestStore.OnChanged -= Refresh;
+        ClusterPolicyStore.OnChanged -= Refresh;
         RequestStore.OnChanged -= Refresh;
+        PolicyStore.OnChanged -= Refresh;
     }
 
-    protected async Task ApproveRequest(BaseAccessRequest request) {
-        if(!IsAuthenticated())
-            return;
+    private bool IsMyRequest(BaseAccessRequest request)
+    {
+        if (authState == null || !IsAuthenticated())
+            return false;
 
-        var username = GetUsername();
-        if (string.IsNullOrWhiteSpace(username))
-            return;
-        
-        try {
-            await request.CreateResponseAsync(K8sClient, username, GetGroups(), "Approved");
+        var username = authState.User.Claims.FirstOrDefault(c => c.Type == "preferred_username");
+
+        if (username == null)
+        {
+            return false;
         }
-        catch(Exception ex) {
-            Error = ex.Message;
+
+        if (request.Spec?.Subject == username.Value)
+        {
+            return true;
         }
-        finally {
-            Refresh();
-        }
+
+        return false;
     }
 
-    protected async Task DeclineRequest(BaseAccessRequest request) {
-        if(!IsAuthenticated())
-            return;
+    private bool ICanApprove(BaseAccessRequest request, IEnumerable<BaseAccessPolicy> policies)
+    {
+        if (authState == null || !IsAuthenticated())
+            return false;
 
-        var username = GetUsername();
-        if (string.IsNullOrWhiteSpace(username))
-            return;
-        
-        try {
-            await request.CreateResponseAsync(K8sClient, username, GetGroups(), "Denied");
-        }
-        catch(Exception ex) {
-            Error = ex.Message;
-        }
-        finally {
-            Refresh();
-        }
+        var username = authState.User.Claims.FirstOrDefault(c => c.Type == "preferred_username");
+        var groups = authState.User.Claims.Where(c => c.Type == "groups").Select(c => c.Value);
+
+        return request.CanApprove(username?.Value ?? "", groups, policies);
     }
 }
