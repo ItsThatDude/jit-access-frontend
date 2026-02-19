@@ -1,0 +1,156 @@
+@page "/review/{RequestName}"
+@using JITAccessController.Web.Blazor.Components.Shared
+@using JITAccessController.Web.Blazor.Kubernetes
+@using JITAccessController.Web.Blazor.Options
+@using Microsoft.Extensions.Options
+@using k8s
+@using k8s.Models
+@rendermode InteractiveServer
+@inherits JITAccessController.Web.Blazor.Components.Shared.AccessRequestPageBase
+@inject AccessRequestStore RequestStore
+@inject AccessPolicyStore PolicyStore
+@inject ClusterAccessRequestStore ClusterRequestStore
+@inject ClusterAccessPolicyStore ClusterPolicyStore
+@inject IKubernetes K8sClient
+@inject IOptions<JITAccessOptions> AccessOptions
+@inject JITAccessController.Web.Blazor.Services.IAccessRequestService AccessRequestService
+
+<PageTitle>Reviewing request @RequestName</PageTitle>
+
+@if (request != null) {
+    <RequestDetails Request="request" OffsetMinutes="_offsetMinutes" />
+
+    @if (request.Status?.State == "Pending")
+    {
+        <div class="d-flex w-100 justify-content-end my-1">
+            <button class="btn btn-sm btn-outline-success m-1"
+                    @onclick="@(e => ApproveRequest(request))">Approve</button>
+            <button class="btn btn-sm btn-outline-danger m-1"
+                    @onclick="@(e => DeclineRequest(request))">Decline</button>
+        </div>
+    }
+}
+else {
+    <div>Could not retrieve the access request.</div>
+}
+
+@code {
+    [Parameter]
+    public required string RequestName { get; set; }
+
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public string? Namespace { get; set; }
+
+    private string Error { get; set; } = "";
+
+    private BaseAccessRequest? request;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+        ClusterRequestStore.OnChanged += Refresh;
+        ClusterPolicyStore.OnChanged += Refresh;
+
+        RequestStore.OnChanged += Refresh;
+        PolicyStore.OnChanged += Refresh;
+
+        Refresh();
+    }
+
+    private bool IsMyRequest(BaseAccessRequest request)
+    {
+        if (authState == null || !IsAuthenticated())
+            return false;
+
+        var username = authState.User.Claims.FirstOrDefault(c => c.Type == "preferred_username");
+
+        if (username == null)
+        {
+            return false;
+        }
+
+        if (request.Spec?.Subject == username.Value)
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    private bool ICanApprove(BaseAccessRequest request, IEnumerable<BaseAccessPolicy> policies)
+    {
+        if (authState == null || !IsAuthenticated())
+            return false;
+
+        var username = authState.User.Claims.FirstOrDefault(c => c.Type == "preferred_username");
+        var groups = authState.User.Claims.Where(c => c.Type == "groups").Select(c => c.Value);
+
+        return request.CanApprove(username?.Value ?? "", groups, policies);
+    }
+
+    private void Refresh()
+    {
+        if(authState == null || !IsAuthenticated())
+            return;
+
+        var username = authState.User.Claims.FirstOrDefault(c => c.Type == "preferred_username");
+        
+        if(username == null) {
+            return;
+        }
+
+        request = null;
+
+        if (string.IsNullOrWhiteSpace(Namespace)) {
+            request = ClusterRequestStore.All
+                .Where(r => r.Metadata.Name == RequestName && ICanApprove(r, ClusterPolicyStore.All))
+                .FirstOrDefault();
+        }
+        else
+        {
+            request = RequestStore.All
+                .Where(r => r.Metadata.NamespaceProperty == Namespace && r.Metadata.Name == RequestName && ICanApprove(r, PolicyStore.All))
+                .FirstOrDefault();
+        }
+        
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SendResponse(BaseAccessRequest request, string response) {
+        if (!IsAuthenticated())
+            return;
+
+        var username = GetUsername();
+        if (string.IsNullOrWhiteSpace(username))
+            return;
+
+        try
+        {
+            await AccessRequestService.SendResponseAsync(request, response, K8sClient, username, GetGroups(), AccessOptions.Value.UseImpersonation);
+        }
+        catch (Exception ex)
+        {
+            Error = ex.Message;
+        }
+    }
+
+    protected async Task ApproveRequest(BaseAccessRequest request)
+    {
+        await SendResponse(request, "Approved");
+    }
+
+    protected async Task DeclineRequest(BaseAccessRequest request)
+    {  
+        await SendResponse(request, "Denied");
+    }
+
+    public void Dispose()
+    {
+        ClusterRequestStore.OnChanged -= Refresh;
+        ClusterPolicyStore.OnChanged -= Refresh;
+        RequestStore.OnChanged -= Refresh;
+        PolicyStore.OnChanged -= Refresh;
+    }
+}

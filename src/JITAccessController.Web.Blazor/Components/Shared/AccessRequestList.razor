@@ -1,0 +1,78 @@
+@using JITAccessController.Web.Blazor.Kubernetes
+@using JITAccessController.Web.Blazor.Options
+@using Microsoft.Extensions.Options
+@using k8s
+@rendermode InteractiveServer
+@inherits JITAccessController.Web.Blazor.Components.Shared.AccessRequestPageBase
+@inject IKubernetes K8sClient
+@inject IOptions<JITAccessOptions> AccessOptions
+@inject JITAccessController.Web.Blazor.Services.IAccessRequestService AccessRequestService
+
+<div class="list-group mb-2">
+    @foreach (var request in AccessRequests)
+    {
+        <div class="list-group-item">
+            <RequestDetails Request="request" OffsetMinutes="_offsetMinutes" />
+
+            @if (request.Status?.State == "Pending")
+            {
+                @if (CanApproveRequest(request))
+                {
+                    <div class="d-flex w-100 justify-content-end my-1">
+                        <button class="btn btn-sm btn-outline-success m-1"
+                                @onclick="@(e => ApproveRequest(request))">Approve</button>
+                        <button class="btn btn-sm btn-outline-danger m-1"
+                                @onclick="@(e => DeclineRequest(request))">Decline</button>
+                    </div>
+                }
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public required IEnumerable<BaseAccessRequest> AccessRequests { get; set; }
+
+    [Parameter]
+    public required Func<BaseAccessRequest, bool> CanApproveRequest { get; set; }
+
+    [Parameter]
+    public EventCallback OnRefreshRequested { get; set; }
+
+    [Parameter]
+    public EventCallback<Exception> OnError { get; set; }
+
+    private async Task SendResponse(BaseAccessRequest request, string response) {
+        if (!IsAuthenticated())
+            return;
+
+        var username = GetUsername();
+        if (string.IsNullOrWhiteSpace(username))
+            return;
+
+        try
+        {
+            await AccessRequestService.SendResponseAsync(request, response, K8sClient, username, GetGroups(), AccessOptions.Value.UseImpersonation);
+        }
+        catch (Exception ex)
+        {
+            await OnError.InvokeAsync(ex);
+        }
+        finally
+        {
+            if (OnRefreshRequested.HasDelegate)
+                await OnRefreshRequested.InvokeAsync();
+        }
+    }
+
+    protected async Task ApproveRequest(BaseAccessRequest request)
+    {
+        await SendResponse(request, "Approved");
+    }
+
+    protected async Task DeclineRequest(BaseAccessRequest request)
+    {  
+        await SendResponse(request, "Denied");
+    }
+}

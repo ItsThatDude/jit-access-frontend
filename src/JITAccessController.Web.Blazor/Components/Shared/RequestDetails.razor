@@ -1,0 +1,73 @@
+@using JITAccessController.Web.Blazor.Kubernetes
+@using k8s.Models
+@using System
+
+@if (Request != null)
+{
+    <div class="d-flex w-100 justify-content-between">
+        <h5 class="mb-2">@Request.Metadata.Name</h5>
+        <div>
+            <small class="@RequestStateToCssClass(Request)">@Request.Status?.State</small>
+            @if (Request.Status?.State == "Pending")
+            {
+                <small>&nbsp;|&nbsp;Expires: @ConvertToLocal(Request.Status.RequestExpiresAt)</small>
+            }
+        </div>
+    </div>
+    <div>
+        <div>
+            <strong class="d-block">Subject</strong>
+            <span class="d-block">@Request.Spec?.Subject</span>
+        </div>
+        @if (!string.IsNullOrWhiteSpace(Request.Spec?.Role?.Name))
+        {
+            <div>
+                <strong class="d-block">Requested Role</strong>
+                <span class="d-block">@Request.Spec.Role.Name</span>
+            </div>
+        }
+        @if (Request.Spec?.Permissions.Count > 0)
+        {
+            <strong>Requested Permissions</strong>
+            <div>
+                <PermissionsList Permissions="Request.Spec.Permissions" />
+            </div>
+        }
+    </div>
+}
+else
+{
+    <div>No request data</div>
+}
+
+@code {
+    [Parameter]
+    public required BaseAccessRequest Request { get; set; }
+
+    [Parameter]
+    public double? OffsetMinutes { get; set; }
+
+    private string RequestStateToCssClass(BaseAccessRequest request)
+    {
+        switch (request.Status?.State)
+        {
+            case "Approved":
+                return "text-success";
+            case "Denied":
+                return "text-danger";
+            case "Pending":
+                return "text-primary";
+            default:
+                return "";
+        }
+    }
+
+    private DateTime ConvertToLocal(DateTime utc)
+    {
+        if (OffsetMinutes.HasValue)
+        {
+            return utc.AddMinutes(-OffsetMinutes.Value);
+        }
+        return utc;
+    }
+}

@@ -1,5 +1,6 @@
 @page "/access-requests"
 @using JITAccessController.Web.Blazor.Kubernetes
+@using JITAccessController.Web.Blazor.Components.Shared
 @using Microsoft.AspNetCore.Components.Authorization
 @using System.Security.Claims
 @using k8s
@@ -7,7 +8,8 @@
 @using k8s.KubeConfigModels
 @using k8s.Models
 @rendermode InteractiveServer
-@inject AuthenticationStateProvider AuthStateProvider
+@inherits JITAccessController.Web.Blazor.Components.Shared.AccessRequestPageBase
+@inject IKubernetes K8sClient
 @inject AccessRequestStore RequestStore
 @inject AccessPolicyStore PolicyStore
 @inject ClusterAccessRequestStore ClusterRequestStore
@@ -16,53 +18,85 @@
 
 <PageTitle>Access Requests</PageTitle>
 
-<h3>Cluster Access Requests</h3>
-@if (clusterAccessRequests != null && clusterAccessRequests.Count > 0) {
-<AccessRequestList AccessRequests="@clusterAccessRequests" CanApproveRequest="@(request => ICanApprove(request, clusterAccessPolicies))" OnRefreshRequested="Refresh" OnError="ShowError" />
-}
-else {
-    <p>No cluster access requests were found</p>
-}
-
-<h3>Access Requests</h3>
-@if (accessRequests != null && accessRequests.Count > 0) {
-<AccessRequestList @AccessRequests=@accessRequests" CanApproveRequest="@(request => ICanApprove(request, accessPolicies))" OnRefreshRequested="Refresh" OnError="ShowError" />
-}
-else {
-    <p>No access requests were found</p>
-}
-
 @if (!string.IsNullOrWhiteSpace(Error)) {
     <div>@Error</div>
 }
 
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-2 mb-md-0">
+            <div class="card-header">
+                My Access Requests
+            </div>
+            <div class="card-body">
+                <h5 class="card-title">Cluster Requests</h5>
+                @if (myClusterRequests != null && myClusterRequests.Count() > 0) {
+                    <AccessRequestList AccessRequests="@myClusterRequests" CanApproveRequest="@(request => false)" OnRefreshRequested="Refresh" OnError="ShowError" />
+                }
+                else {
+                    <p class="card-text">No cluster access requests were found</p>
+                }
+
+                <hr />
+
+                <h5 class="card-title">Namespace Requests</h5>
+                @if (myRequests != null && myRequests.Count() > 0) {
+                    <AccessRequestList AccessRequests=@myRequests" CanApproveRequest="@(request => false)" OnRefreshRequested="Refresh" OnError="ShowError" />
+                }
+                else {
+                    <p class="card-text">No access requests were found</p>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                Pending Approval
+            </div>
+            <div class="card-body">
+                <h5 class="card-title">Cluster Requests</h5>
+                @if (pendingClusterRequests != null && pendingClusterRequests.Count() > 0) {
+                    <AccessRequestList AccessRequests="@pendingClusterRequests" CanApproveRequest="@(request => true)" OnRefreshRequested="Refresh" OnError="ShowError" />
+                }
+                else {
+                    <p class="card-text">No cluster access requests pending approval</p>
+                }
+
+                <hr />
+
+                <h5 class="card-title">Namespaced Requests</h5>
+                @if (pendingRequests != null && pendingRequests.Count() > 0) {
+                    <AccessRequestList AccessRequests=@pendingRequests" CanApproveRequest="@(request => true)" OnRefreshRequested="Refresh" OnError="ShowError" />
+                }
+                else {
+                    <p class="card-text">No access requests pending approval</p>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
 @code {
     public string Error = "";
-    private AuthenticationState? authState;
+
     private List<ClusterAccessRequest> clusterAccessRequests = new List<ClusterAccessRequest>();
     private List<ClusterAccessPolicy> clusterAccessPolicies = new List<ClusterAccessPolicy>();
     private List<AccessRequest> accessRequests = new List<AccessRequest>();
     private List<AccessPolicy> accessPolicies = new List<AccessPolicy>();
 
-    protected bool IsAuthenticated() {
-        return authState != null && authState.User.Identity != null;
-    }
+    private IEnumerable<ClusterAccessRequest> myClusterRequests => clusterAccessRequests.Where(r => IsMyRequest(r));
+    private IEnumerable<AccessRequest> myRequests => accessRequests.Where(r => IsMyRequest(r));
 
-    protected string? GetUsername() {
-        return authState?.User.Claims.FirstOrDefault(c => c.Type == "preferred_username")?.Value;
-    }
+    private IEnumerable<ClusterAccessRequest> pendingClusterRequests => clusterAccessRequests.Where(r => !IsMyRequest(r) && ICanApprove(r, clusterAccessPolicies));
+    private IEnumerable<AccessRequest> pendingRequests => accessRequests.Where(r => !IsMyRequest(r) && ICanApprove(r, accessPolicies));
 
-    protected List<string> GetGroups() {
-        if(authState == null)
-            return new List<string>();
-        
-        return authState.User.Claims.Where(c => c.Type == "groups")
-            .Select(c => "oidc" + c.Value).ToList();   
-    }
+    // Authentication helpers provided by AccessRequestPageBase
 
     protected override async Task OnInitializedAsync()
     {
-        authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        await base.OnInitializedAsync();
 
         ClusterRequestStore.OnChanged += Refresh;
         ClusterPolicyStore.OnChanged += Refresh;
@@ -77,6 +111,37 @@ else {
         Error = ex.Message;
         
         InvokeAsync(StateHasChanged);
+    }
+
+    private bool IsMyRequest(BaseAccessRequest request)
+    {
+        if (authState == null || !IsAuthenticated())
+            return false;
+
+        var username = authState.User.Claims.FirstOrDefault(c => c.Type == "preferred_username");
+
+        if (username == null)
+        {
+            return false;
+        }
+
+        if (request.Spec?.Subject == username.Value)
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    private bool ICanApprove(BaseAccessRequest request, IEnumerable<BaseAccessPolicy> policies)
+    {
+        if (authState == null || !IsAuthenticated())
+            return false;
+
+        var username = authState.User.Claims.FirstOrDefault(c => c.Type == "preferred_username");
+        var groups = authState.User.Claims.Where(c => c.Type == "groups").Select(c => c.Value);
+
+        return request.CanApprove(username?.Value ?? "", groups, policies);
     }
 
     private void Refresh()
@@ -109,36 +174,5 @@ else {
         ClusterPolicyStore.OnChanged -= Refresh;
         RequestStore.OnChanged -= Refresh;
         PolicyStore.OnChanged -= Refresh;
-    }
-
-    private bool IsMyRequest(BaseAccessRequest request)
-    {
-        if (authState == null || !IsAuthenticated())
-            return false;
-
-        var username = authState.User.Claims.FirstOrDefault(c => c.Type == "preferred_username");
-
-        if (username == null)
-        {
-            return false;
-        }
-
-        if (request.Spec?.Subject == username.Value)
-        {
-            return true;
-        }
-
-        return false;
-    }
-
-    private bool ICanApprove(BaseAccessRequest request, IEnumerable<BaseAccessPolicy> policies)
-    {
-        if (authState == null || !IsAuthenticated())
-            return false;
-
-        var username = authState.User.Claims.FirstOrDefault(c => c.Type == "preferred_username");
-        var groups = authState.User.Claims.Where(c => c.Type == "groups").Select(c => c.Value);
-
-        return request.CanApprove(username?.Value ?? "", groups, policies);
     }
 }

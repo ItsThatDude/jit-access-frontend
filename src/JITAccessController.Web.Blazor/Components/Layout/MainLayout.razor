@@ -1,6 +1,8 @@
 ﻿@using Microsoft.AspNetCore.Components.Authorization
 @inherits LayoutComponentBase
 
+<script type="module" src="@Assets["Components/Layout/MainLayout.razor.js"]"></script>
+
 <div class="page">
     <div class="sidebar">
         <NavMenu />
@@ -10,6 +12,7 @@
         <div class="top-row px-4">
             <AuthorizeView>
                 <Authorized>
+                    <span class="bi bi-person-circle-top-row"></span>
                     @context.User.Identity?.Name
                 </Authorized>
             </AuthorizeView>

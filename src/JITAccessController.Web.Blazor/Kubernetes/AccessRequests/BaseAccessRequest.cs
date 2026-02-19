@@ -6,7 +6,7 @@ namespace JITAccessController.Web.Blazor.Kubernetes;
 
 public abstract class BaseAccessRequest : CustomResource<AccessRequestSpec, AccessRequestStatus>
 {
-    private AccessResponse? BuildResponse(string username, List<string> groups, string response) {
+    private AccessResponse? BuildResponse(string username, IEnumerable<string> groups, string response) {
         if(string.IsNullOrWhiteSpace(username))
             return null;
         
@@ -38,14 +38,14 @@ public abstract class BaseAccessRequest : CustomResource<AccessRequestSpec, Acce
                 RequestRef = this.Name(),
                 Response = response,
                 Approver = username,
-                Groups = groups
+                Groups = groups.ToList()
             }
         };
 
         return cr;
     }
 
-    public async Task CreateResponseAsync(IKubernetes client, string username, List<string> groups, string response, bool useImpersonation = false)
+    public async Task CreateResponseAsync(IKubernetes client, string username, IEnumerable<string> groups, string response, bool useImpersonation = false)
     {
         var requestResponse = BuildResponse(username, groups, response);
         var ns = requestResponse.Namespace();
@@ -66,7 +66,7 @@ public abstract class BaseAccessRequest : CustomResource<AccessRequestSpec, Acce
 
         if (useImpersonation) {
             headers.Add("Impersonate-User", new List<string>([username]));
-            headers.Add("Impersonate-Group", groups);
+            headers.Add("Impersonate-Group", groups.ToList());
         }
 
         if (string.IsNullOrWhiteSpace(requestResponse.Namespace())) {
@@ -91,6 +91,11 @@ public abstract class BaseAccessRequest : CustomResource<AccessRequestSpec, Acce
     public bool CanApprove(string username, IEnumerable<string> groups, IEnumerable<BaseAccessPolicy> policies)
     {
         if (string.IsNullOrWhiteSpace(username))
+        {
+            return false;
+        }
+
+        if (username == Spec?.Subject)
         {
             return false;
         }

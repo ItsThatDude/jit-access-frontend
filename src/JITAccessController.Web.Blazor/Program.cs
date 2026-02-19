@@ -4,6 +4,7 @@ using JITAccessController.Web.Blazor.Components;
 using JITAccessController.Web.Blazor.Kubernetes;
 using JITAccessController.Web.Blazor.Options;
 using k8s;
+using JITAccessController.Web.Blazor.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Authorization;
@@ -44,6 +45,8 @@ builder.Services.AddSingleton<AccessRequestStore>();
 builder.Services.AddHostedService<AccessRequestWatcher>();
 builder.Services.AddSingleton<ClusterAccessRequestStore>();
 builder.Services.AddHostedService<ClusterAccessRequestWatcher>();
+
+builder.Services.AddScoped<IAccessRequestService, AccessRequestService>();
 
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {

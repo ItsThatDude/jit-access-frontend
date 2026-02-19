@@ -1,0 +1,75 @@
+@using k8s.Models
+@using System.Linq
+
+@code {
+    [Parameter]
+    public IEnumerable<V1PolicyRule>? Permissions { get; set; }
+}
+
+@if (Permissions != null && Permissions.Any())
+{
+    var perms = Permissions.ToList();
+    var lastPermission = perms.Last();
+    foreach (var permission in perms)
+    {
+        <div class="m-1 px-1 row">
+            @if (permission.ApiGroups != null)
+            {
+                <div class="col">
+                    <h6 class="mb-0">API Groups:</h6>
+                    <div>
+                        @foreach (var apiGroup in permission.ApiGroups)
+                        {
+                            <span class="badge rounded-pill text-bg-primary">
+                            @if (apiGroup == "") {
+                                <text>(core)</text>
+                            } else {
+                                <text>@apiGroup</text>
+                            }
+                            </span>
+                        }
+                    </div>
+                </div>
+            }
+            @if (permission.Verbs != null)
+            {
+                <div class="col">
+                    <h6 class="mb-0">Verbs:</h6>
+                    <div>
+                        @foreach (var verb in permission.Verbs)
+                        {
+                            <span class="badge rounded-pill text-bg-primary">@verb</span>
+                        }
+                    </div>
+                </div>
+            }
+            @if (permission.Resources != null)
+            {
+                <div class="col">
+                    <h6 class="mb-0">Resources:</h6>
+                    <div>
+                        @foreach (var resource in permission.Resources)
+                        {
+                            <span class="badge rounded-pill text-bg-primary">@resource</span>
+                        }
+                    </div>
+                </div>
+            }
+            @if (permission.ResourceNames != null)
+            {
+                <div class="col">
+                    <h6 class="mb-0">Resource Names:</h6>
+                    <div>
+                        @foreach (var resourceName in permission.ResourceNames)
+                        {
+                            <span class="badge rounded-pill text-bg-primary">@resourceName</span>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+        if (permission != lastPermission) {
+            <hr />
+        }
+    }
+}
