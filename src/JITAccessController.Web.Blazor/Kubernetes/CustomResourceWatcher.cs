@@ -10,12 +10,15 @@ public abstract class CustomResourceWatcher<TCustomResource, TCustomResourceStor
     private readonly TCustomResourceStore _store;
     private readonly ILogger _logger;
 
+    private readonly CustomResourceClient<TCustomResource> _genericClient;
+
     public CustomResourceWatcher(
         IKubernetes client,
         TCustomResourceStore store,
         ILogger<CustomResourceWatcher<TCustomResource,TCustomResourceStore>> logger)
     {
         _client = client;
+        _genericClient = new CustomResourceClient<TCustomResource>(_client, false);
         _store = store;
         _logger = logger;
     }
@@ -24,13 +27,15 @@ public abstract class CustomResourceWatcher<TCustomResource, TCustomResourceStor
     {
         while(!stoppingToken.IsCancellationRequested)
         {
+            _logger.LogInformation("{WatcherName} Watcher starting", this.GetType().Name);
+
             try
             {
                 await RunWatchAsync(stoppingToken);
             }
             catch(Exception ex)
             {
-                _logger.LogError(ex, "{0} Watcher crashed, retrying in 5s", nameof(TCustomResource));
+                _logger.LogError(ex, "{WatcherName} Watcher crashed, retrying in 5s", this.GetType().Name);
                 await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
             }
         }
@@ -38,9 +43,7 @@ public abstract class CustomResourceWatcher<TCustomResource, TCustomResourceStor
 
     private async Task RunWatchAsync(CancellationToken ct)
     {
-        var generic = new CustomResourceClient<TCustomResource>(_client, false);
-
-        var list = await generic.ListAsync<CustomResourceList<TCustomResource>>(ct);
+        var list = await _genericClient.ListAsync<CustomResourceList<TCustomResource>>(ct);
         if(list != null && list.Items != null)
         {
             foreach(var item in list.Items)
@@ -49,7 +52,7 @@ public abstract class CustomResourceWatcher<TCustomResource, TCustomResourceStor
             }
         }
 
-        await foreach (var (type, request) in generic.WatchAsync<TCustomResource>(cancel: ct))
+        await foreach (var (type, request) in _genericClient.WatchAsync<TCustomResource>(cancel: ct))
         {
             if (ct.IsCancellationRequested)
                 break;
