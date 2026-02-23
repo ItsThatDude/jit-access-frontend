@@ -8,21 +8,24 @@
 @inject IOptions<JITAccessOptions> AccessOptions
 @inject JITAccessController.Web.Blazor.Services.IAccessRequestService AccessRequestService
 
-<div class="list-group mb-2">
+<div class="card-list">
     @foreach (var request in AccessRequests)
     {
-        <div class="list-group-item">
-            <RequestDetails Request="request" OffsetMinutes="_offsetMinutes" />
-
+        <div class="card">
+            <div class="card-body">
+                <RequestDetails Request="request" OffsetMinutes="_offsetMinutes" />
+            </div>
             @if (request.Status?.State == "Pending")
             {
                 @if (CanApproveRequest(request))
                 {
-                    <div class="d-flex w-100 justify-content-end my-1">
-                        <button class="btn btn-sm btn-outline-success m-1"
-                                @onclick="@(e => ApproveRequest(request))">Approve</button>
-                        <button class="btn btn-sm btn-outline-danger m-1"
-                                @onclick="@(e => DeclineRequest(request))">Decline</button>
+                    <div class="card-footer">
+                        <div class="d-flex justify-content-end">
+                            <button class="btn btn-sm btn-outline-success m-1"
+                                    @onclick="@(e => ApproveRequest(request))">Approve</button>
+                            <button class="btn btn-sm btn-outline-danger m-1"
+                                    @onclick="@(e => DeclineRequest(request))">Decline</button>
+                        </div>
                     </div>
                 }
             }

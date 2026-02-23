@@ -2,10 +2,12 @@
 @using JITAccessController.Web.Blazor.Components.Shared
 @using JITAccessController.Web.Blazor.Kubernetes
 @using JITAccessController.Web.Blazor.Options
+@using Microsoft.AspNetCore.Authorization
 @using Microsoft.Extensions.Options
 @using k8s
 @using k8s.Models
 @rendermode InteractiveServer
+@attribute [Authorize]
 @inherits JITAccessController.Web.Blazor.Components.Shared.AccessRequestPageBase
 @inject AccessRequestStore RequestStore
 @inject AccessPolicyStore PolicyStore
@@ -18,17 +20,22 @@
 <PageTitle>Reviewing request @RequestName</PageTitle>
 
 @if (request != null) {
-    <RequestDetails Request="request" OffsetMinutes="_offsetMinutes" />
-
-    @if (request.Status?.State == "Pending")
-    {
-        <div class="d-flex w-100 justify-content-end my-1">
-            <button class="btn btn-sm btn-outline-success m-1"
-                    @onclick="@(e => ApproveRequest(request))">Approve</button>
-            <button class="btn btn-sm btn-outline-danger m-1"
-                    @onclick="@(e => DeclineRequest(request))">Decline</button>
+    <div class="card">
+        <div class="card-body">
+            <RequestDetails Request="request" OffsetMinutes="_offsetMinutes" />
         </div>
-    }
+        @if (request.Status?.State == "Pending")
+        {
+            <div class="card-footer">
+                <div class="d-flex justify-content-end">
+                    <button class="btn btn-sm btn-outline-success m-1"
+                            @onclick="@(e => ApproveRequest(request))">Approve</button>
+                    <button class="btn btn-sm btn-outline-danger m-1"
+                            @onclick="@(e => DeclineRequest(request))">Decline</button>
+                </div>
+            </div>
+        }
+    </div>
 }
 else {
     <div>Could not retrieve the access request.</div>

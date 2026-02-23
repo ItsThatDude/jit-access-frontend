@@ -13,6 +13,9 @@ using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Serilog;
 using Serilog.Events;
 using Serilog.Formatting.Compact;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Extensions.Options;
+using System.Security.Cryptography.X509Certificates;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -61,6 +64,64 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     options.KnownIPNetworks.Clear();
 });
 
+var dataProtection = builder.Services.AddDataProtection()
+    .SetApplicationName("JITAccess-Frontend");
+
+var dataProtectionOptions = builder.Configuration.GetSection("DataProtectionOptions")
+    .Get<JITAccessController.Web.Blazor.Options.DataProtectionOptions>();
+
+if(dataProtectionOptions != null) {
+    Log.Information(
+        "Configuring DataProtection -- PersistKeysToFileSystem: '{PersistKeysToFileSystem}'; Path: '{FileSystemPath}'; Certificate Path: '{CertificatePath}'",
+        dataProtectionOptions.PersistKeysToFileSystem,
+        dataProtectionOptions.FileSystemPath,
+        dataProtectionOptions.CertificatePath
+    );
+
+    if(dataProtectionOptions.PersistKeysToFileSystem) {
+        dataProtection.PersistKeysToFileSystem(new DirectoryInfo(dataProtectionOptions.FileSystemPath));
+    }
+
+    if(!string.IsNullOrWhiteSpace(dataProtectionOptions.CertificatePath))
+    {
+        string? password = null;
+        if(!string.IsNullOrWhiteSpace(dataProtectionOptions.CertificatePasswordPath))
+        {
+            if(File.Exists(dataProtectionOptions.CertificatePasswordPath)) {
+                password = File.ReadAllText(dataProtectionOptions.CertificatePasswordPath);
+            }
+        }
+
+        X509Certificate2 certificate;
+
+        if(dataProtectionOptions.CertificatePath.EndsWith(".pfx"))
+        {
+            certificate = X509CertificateLoader.LoadPkcs12FromFile(dataProtectionOptions.CertificatePath, password);
+        }
+        else
+        {
+            string? keyPath = null;
+
+            if(!string.IsNullOrWhiteSpace(dataProtectionOptions.CertificateKeyPath))
+            {
+                keyPath = dataProtectionOptions.CertificateKeyPath;
+            }
+
+            if(!string.IsNullOrWhiteSpace(password))
+            {
+                certificate = X509Certificate2.CreateFromEncryptedPemFile(dataProtectionOptions.CertificatePath, password, keyPath);
+            }
+            else {
+                certificate = X509Certificate2.CreateFromPemFile(dataProtectionOptions.CertificatePath, keyPath);
+            }
+        }
+
+        if(certificate != null) {
+            dataProtection.ProtectKeysWithCertificate(certificate);
+        }
+    }
+}
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
@@ -87,12 +148,7 @@ builder.Services.AddAuthentication(options =>
     options.Scope.Add("groups");
 });
 
-builder.Services.AddAuthorization(options =>
-{
-    options.FallbackPolicy = new AuthorizationPolicyBuilder()
-        .RequireAuthenticatedUser()
-        .Build();
-});
+builder.Services.AddAuthorization();
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
@@ -126,6 +182,6 @@ app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
-app.MapGroup("/authentication").MapLoginAndLogout();
+app.MapGroup("/auth").MapLoginAndLogout();
 
 app.Run();

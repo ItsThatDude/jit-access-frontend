@@ -7,4 +7,8 @@ public class AccessRequestStatus
     public DateTime RequestExpiresAt { get; set; }
 
     public string ResolvedPolicy { get; set; } = "";
+
+    public int ApprovalsRequired { get; set; }
+
+    public int ApprovalsReceived { get; set; }
 }

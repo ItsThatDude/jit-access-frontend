@@ -4,15 +4,31 @@
 
 @if (Request != null)
 {
-    <div class="d-flex w-100 justify-content-between">
-        <h5 class="mb-2">@Request.Metadata.Name</h5>
-        <div>
-            <small class="@RequestStateToCssClass(Request)">@Request.Status?.State</small>
+    <div class="mb-2">
+        <div class="d-flex w-100 justify-content-between">
+            <h5>@Request.Metadata.Name</h5>
+            <div>
+                <small class="d-inline-block badge rounded-pill @RequestStateToCssClass(Request)">@Request.Status?.State</small>
+                @if (Request.Status?.State == "Pending")
+                {
+                    <small class="d-inline-block border-start border-2 ps-1">@Request.Status!.ApprovalsReceived/@Request.Status!.ApprovalsRequired Approvals</small>
+                }
+            </div>
+        </div>
+            <div class="d-flex w-100 justify-content-between">
+                <div>
+                    <small class="badge rounded-pill text-bg-secondary">@Request.Scope</small>
+                    @if (Request.Metadata.CreationTimestamp != null) {
+                        <small class="badge rounded-pill text-bg-secondary">Created @ConvertToLocal(Request.Metadata.CreationTimestamp.Value)</small>
+                    }
+                </div>
             @if (Request.Status?.State == "Pending")
             {
-                <small>&nbsp;|&nbsp;Expires: @ConvertToLocal(Request.Status.RequestExpiresAt)</small>
+                <div>
+                    <small class="badge rounded-pill text-bg-secondary">Expires: @ConvertToLocal(Request.Status!.RequestExpiresAt)</small>
+                </div>
             }
-        </div>
+            </div>
     </div>
     <div>
         <div>
@@ -52,13 +68,13 @@ else
         switch (request.Status?.State)
         {
             case "Approved":
-                return "text-success";
+                return "text-bg-success";
             case "Denied":
-                return "text-danger";
+                return "text-bg-danger";
             case "Pending":
-                return "text-primary";
+                return "text-bg-warning";
             default:
-                return "";
+                return "text-bg-secondary";
         }
     }
 

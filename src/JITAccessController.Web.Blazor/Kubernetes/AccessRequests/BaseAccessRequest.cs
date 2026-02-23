@@ -6,6 +6,8 @@ namespace JITAccessController.Web.Blazor.Kubernetes;
 
 public abstract class BaseAccessRequest : CustomResource<AccessRequestSpec, AccessRequestStatus>
 {
+    public string Scope => string.IsNullOrWhiteSpace(Metadata.NamespaceProperty) ? "Cluster" : Metadata.NamespaceProperty;
+
     private AccessResponse? BuildResponse(string username, IEnumerable<string> groups, string response) {
         if(string.IsNullOrWhiteSpace(username))
             return null;

@@ -1,6 +1,7 @@
 @page "/access-requests"
 @using JITAccessController.Web.Blazor.Kubernetes
 @using JITAccessController.Web.Blazor.Components.Shared
+@using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
 @using System.Security.Claims
 @using k8s
@@ -8,6 +9,7 @@
 @using k8s.KubeConfigModels
 @using k8s.Models
 @rendermode InteractiveServer
+@attribute [Authorize]
 @inherits JITAccessController.Web.Blazor.Components.Shared.AccessRequestPageBase
 @inject IKubernetes K8sClient
 @inject AccessRequestStore RequestStore
@@ -29,19 +31,8 @@
                 My Access Requests
             </div>
             <div class="card-body">
-                <h5 class="card-title">Cluster Requests</h5>
-                @if (myClusterRequests != null && myClusterRequests.Count() > 0) {
-                    <AccessRequestList AccessRequests="@myClusterRequests" CanApproveRequest="@(request => false)" OnRefreshRequested="Refresh" OnError="ShowError" />
-                }
-                else {
-                    <p class="card-text">No cluster access requests were found</p>
-                }
-
-                <hr />
-
-                <h5 class="card-title">Namespace Requests</h5>
                 @if (myRequests != null && myRequests.Count() > 0) {
-                    <AccessRequestList AccessRequests=@myRequests" CanApproveRequest="@(request => false)" OnRefreshRequested="Refresh" OnError="ShowError" />
+                    <AccessRequestList AccessRequests="@myRequests" CanApproveRequest="@(request => false)" OnRefreshRequested="Refresh" OnError="ShowError" />
                 }
                 else {
                     <p class="card-text">No access requests were found</p>
@@ -56,19 +47,8 @@
                 Pending Approval
             </div>
             <div class="card-body">
-                <h5 class="card-title">Cluster Requests</h5>
-                @if (pendingClusterRequests != null && pendingClusterRequests.Count() > 0) {
-                    <AccessRequestList AccessRequests="@pendingClusterRequests" CanApproveRequest="@(request => true)" OnRefreshRequested="Refresh" OnError="ShowError" />
-                }
-                else {
-                    <p class="card-text">No cluster access requests pending approval</p>
-                }
-
-                <hr />
-
-                <h5 class="card-title">Namespaced Requests</h5>
                 @if (pendingRequests != null && pendingRequests.Count() > 0) {
-                    <AccessRequestList AccessRequests=@pendingRequests" CanApproveRequest="@(request => true)" OnRefreshRequested="Refresh" OnError="ShowError" />
+                    <AccessRequestList AccessRequests="@pendingRequests" CanApproveRequest="@(request => true)" OnRefreshRequested="Refresh" OnError="ShowError" />
                 }
                 else {
                     <p class="card-text">No access requests pending approval</p>
@@ -86,11 +66,25 @@
     private List<AccessRequest> accessRequests = new List<AccessRequest>();
     private List<AccessPolicy> accessPolicies = new List<AccessPolicy>();
 
-    private IEnumerable<ClusterAccessRequest> myClusterRequests => clusterAccessRequests.Where(r => IsMyRequest(r));
-    private IEnumerable<AccessRequest> myRequests => accessRequests.Where(r => IsMyRequest(r));
-
-    private IEnumerable<ClusterAccessRequest> pendingClusterRequests => clusterAccessRequests.Where(r => !IsMyRequest(r) && ICanApprove(r, clusterAccessPolicies));
-    private IEnumerable<AccessRequest> pendingRequests => accessRequests.Where(r => !IsMyRequest(r) && ICanApprove(r, accessPolicies));
+    private IEnumerable<BaseAccessRequest> myRequests => 
+        clusterAccessRequests
+            .Where(r => IsMyRequest(r))
+            .Cast<BaseAccessRequest>()
+            .Concat(
+                accessRequests
+                    .Where(r => IsMyRequest(r))
+                    .Cast<BaseAccessRequest>()
+            ).OrderByDescending(r => r.Metadata.CreationTimestamp);
+    
+    private IEnumerable<BaseAccessRequest> pendingRequests =>
+        clusterAccessRequests
+            .Where(r => r.Status?.State == "Pending" && !IsMyRequest(r) && ICanApprove(r, clusterAccessPolicies))
+            .Cast<BaseAccessRequest>()
+            .Concat(
+                accessRequests
+                    .Where(r => r.Status?.State == "Pending" && !IsMyRequest(r) && ICanApprove(r, accessPolicies))
+                    .Cast<BaseAccessRequest>()
+            ).OrderByDescending(r => r.Metadata.CreationTimestamp);
 
     // Authentication helpers provided by AccessRequestPageBase
 
