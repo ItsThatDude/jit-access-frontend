@@ -11,4 +11,6 @@ public class AccessRequestStatus
     public int ApprovalsRequired { get; set; }
 
     public int ApprovalsReceived { get; set; }
+
+    public IEnumerable<AccessRequestApproval> Approvals { get; set; } = Array.Empty<AccessRequestApproval>();
 }

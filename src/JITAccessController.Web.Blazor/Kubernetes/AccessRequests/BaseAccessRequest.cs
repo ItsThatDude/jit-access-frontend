@@ -90,6 +90,24 @@ public abstract class BaseAccessRequest : CustomResource<AccessRequestSpec, Acce
         }
     }
 
+    public bool AlreadyApprovedByUser(string? username)
+    {
+        if (string.IsNullOrWhiteSpace(username))
+        {
+            return true;
+        }
+
+        if (Status != null)
+        {
+            if (Status.Approvals.Any(a => a.Approver == username))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public bool CanApprove(string username, IEnumerable<string> groups, IEnumerable<BaseAccessPolicy> policies)
     {
         if (string.IsNullOrWhiteSpace(username))

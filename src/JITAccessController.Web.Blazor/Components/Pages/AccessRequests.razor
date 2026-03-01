@@ -48,7 +48,7 @@
             </div>
             <div class="card-body">
                 @if (pendingRequests != null && pendingRequests.Count() > 0) {
-                    <AccessRequestList AccessRequests="@pendingRequests" CanApproveRequest="@(request => true)" OnRefreshRequested="Refresh" OnError="ShowError" />
+                    <AccessRequestList AccessRequests="@pendingRequests" CanApproveRequest="@(request => !request.AlreadyApprovedByUser(GetUsername()))" OnRefreshRequested="Refresh" OnError="ShowError" />
                 }
                 else {
                     <p class="card-text">No access requests pending approval</p>
