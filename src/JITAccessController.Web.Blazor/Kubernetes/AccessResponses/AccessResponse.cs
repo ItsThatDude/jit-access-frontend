@@ -6,7 +6,7 @@ namespace JITAccessController.Web.Blazor.Kubernetes;
     Kind = "AccessResponse",
     Group = "access.antware.xyz",
     ApiVersion = "v1alpha1",
-    PluralName = "accesspresonses"
+    PluralName = "accessresponses"
 )]
 public class AccessResponse : BaseAccessResponse
 {
