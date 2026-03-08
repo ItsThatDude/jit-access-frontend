@@ -30,14 +30,12 @@
             <div class="card-header">
                 My Access Requests
             </div>
-            <div class="card-body">
-                @if (myRequests != null && myRequests.Count() > 0) {
-                    <AccessRequestList AccessRequests="@myRequests" CanApproveRequest="@(request => false)" OnRefreshRequested="Refresh" OnError="ShowError" />
-                }
-                else {
-                    <p class="card-text">No access requests were found</p>
-                }
-            </div>
+            @if (myRequests != null && myRequests.Count() > 0) {
+                <AccessRequestList AccessRequests="@myRequests" CanApproveRequest="@(request => false)" OnRefreshRequested="Refresh" OnError="ShowError" />
+            }
+            else {
+                <div class="card-body"><p class="card-text">No access requests were found</p></div>
+            }
         </div>
     </div>
 
@@ -46,14 +44,12 @@
             <div class="card-header">
                 Pending Approval
             </div>
-            <div class="card-body">
-                @if (pendingRequests != null && pendingRequests.Count() > 0) {
-                    <AccessRequestList AccessRequests="@pendingRequests" CanApproveRequest="@(request => !request.AlreadyApprovedByUser(GetUsername()))" OnRefreshRequested="Refresh" OnError="ShowError" />
-                }
-                else {
-                    <p class="card-text">No access requests pending approval</p>
-                }
-            </div>
+            @if (pendingRequests != null && pendingRequests.Count() > 0) {
+                <AccessRequestList AccessRequests="@pendingRequests" CanApproveRequest="@(request => !request.AlreadyApprovedByUser(GetUsername()))" OnRefreshRequested="Refresh" OnError="ShowError" />
+            }
+            else {
+                <div class="card-body"><p class="card-text">No access requests pending approval</p></div>
+            }
         </div>
     </div>
 </div>

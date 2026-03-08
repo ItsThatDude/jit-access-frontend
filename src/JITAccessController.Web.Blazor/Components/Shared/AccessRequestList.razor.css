@@ -1,0 +1,12 @@
+.access-request-list > .access-request:not(:last-child) {
+    border-bottom: 2px solid var(--bs-border-color-translucent);
+}
+
+.access-request > .request-body {
+    padding: .5rem;
+}
+
+.access-request > .request-footer {
+    border-top: 1px solid var(--bs-border-color-translucent);
+    padding: .5rem;
+}
