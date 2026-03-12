@@ -6,5 +6,5 @@ public class AccessPolicySpec
 {
     public List<Rbacv1Subject> Approvers { get; set; } = new();
 
-    public bool AllowSelfApproval = false;
+    public bool AllowSelfApproval { get; set; } = false;
 }

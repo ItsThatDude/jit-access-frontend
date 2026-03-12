@@ -31,7 +31,7 @@
                 My Access Requests
             </div>
             @if (myRequests != null && myRequests.Count() > 0) {
-                <AccessRequestList AccessRequests="@myRequests" CanApproveRequest="@(request => false)" OnRefreshRequested="Refresh" OnError="ShowError" />
+                <AccessRequestList AccessRequests="@myRequests" CanApproveRequest="@(request => ICanApprove(request))" OnRefreshRequested="Refresh" OnError="ShowError" />
             }
             else {
                 <div class="card-body"><p class="card-text">No access requests were found</p></div>
@@ -121,6 +121,15 @@
         }
 
         return false;
+    }
+
+    private bool ICanApprove(BaseAccessRequest request) {
+        if(request.Scope == "Cluster") {
+            return ICanApprove(request, clusterAccessPolicies);
+        }
+        else {
+            return ICanApprove(request, accessPolicies);
+        }
     }
 
     private bool ICanApprove(BaseAccessRequest request, IEnumerable<BaseAccessPolicy> policies)
