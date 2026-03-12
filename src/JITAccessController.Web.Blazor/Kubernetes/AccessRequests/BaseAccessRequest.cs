@@ -115,11 +115,6 @@ public abstract class BaseAccessRequest : CustomResource<AccessRequestSpec, Acce
             return false;
         }
 
-        if (username == Spec?.Subject)
-        {
-            return false;
-        }
-
         if (!string.IsNullOrWhiteSpace(Status?.ResolvedPolicy))
         {
             var policy = policies.FirstOrDefault(p => p.Metadata.Name == Status?.ResolvedPolicy);
@@ -128,6 +123,11 @@ public abstract class BaseAccessRequest : CustomResource<AccessRequestSpec, Acce
             {
                 if (policy.Spec != null)
                 {
+                    if (policy.Spec.AllowSelfApproval == false && username == Spec?.Subject)
+                    {
+                        return false;
+                    }
+
                     if (policy.Spec.Approvers.Any(s => s.Kind == "User" && s.Name == username))
                     {
                         return true;
